@@ -1,26 +1,24 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 21.06.2023 11:42:47
-// Design Name: 
-// Module Name: roi_top
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
 module roi_top(
 
-    );
+);
+
+
+  logic [31:0] xy_0;
+  logic [31:0] xy_1;
+
+  roi_axis DUT_AXIS
+  (
+
+    .xy_0_i  ( xy_0 ),
+    .xy_1_i  ( xy_1 )
+
+  );
+
+
+  roi_apb DUT_APB
+  (
+    .xy_0_o  ( xy_0 ),
+    .xy_1_o  ( xy_1 )
+  );
+
 endmodule
