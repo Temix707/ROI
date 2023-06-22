@@ -6,7 +6,6 @@ Project to work
 ![Project Display](https://github.com/Temix707/ROI/blob/master/scheme/IMG20230622005219.jpg)
 
 ПРОЕКТ ROI (Region of Interest)
-—————————————————
 
 Набор AXIS Stream
 - Входные сигналы AXIS: clk_i, arst_i, tdata_i, tvalid_i, tlast_i (последний кусок данных БолКв) 
