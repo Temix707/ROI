@@ -1,6 +1,11 @@
 module roi_apb(
-  input logic xy_0_o,
-  input logic xy_1_o
+  input   logic         clk_i,
+  input   logic         arst_i,
+
+  
+
+  output  logic  [31:0] xy_0_o,
+  output  logic  [31:0] xy_1_o
 );
   
 endmodule

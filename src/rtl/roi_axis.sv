@@ -23,19 +23,38 @@ module roi_axis
 );
 
 
-  logic [BIT_D-1:0] pixel;                                // buffer for data
+  logic [BIT_D-1:0]                     pixel;            // buffer for data
 
-  //  X (width) and Y (height) coordinate counters for a large area
-  logic [$clog2( WIDTH  )-1:0]  cnt_l_x;
-  logic [$clog2( HEIGHT )-1:0]  cnt_l_y;
+  logic [$clog2( HEIGHT * WIDTH )-1:0]  cnt_quan_pxl;     //  data quantity counter (log2 (480000) = 19 bit)
 
-  // X (width) and Y (height) coordinate counters for a small area (to check)
-  logic [$clog2( WIDTH  )-1:0]  cnt_s_x;
-  logic [$clog2( HEIGHT )-1:0]  cnt_s_y; 
+  //  X (width) and Y (height) coordinate counters for a LARGE area
+  logic [$clog2( WIDTH  )-1:0]          cnt_l_x;
+  logic [$clog2( HEIGHT )-1:0]          cnt_l_y;
 
-  // buffers for finding points
-  logic                         find_x0, find_y0;
-  logic                         find_x1, find_y1;
+  // X (width) and Y (height) coordinate counters for a SMALL area (to check)
+  logic [$clog2( WIDTH  )-1:0]          cnt_s_x;
+  logic [$clog2( HEIGHT )-1:0]          cnt_s_y; 
+
+  // Buffers for finding points 
+  logic [9:0]                           find_x0, find_y0;
+  logic [9:0]                           find_x1, find_y1;
+
+  // Counters of fullness and emptiness
+  logic                                 wr_full, rd_empty;
+
+  always_comb begin
+    wr_full   = ( cnt_quan_pxl == HEIGHT * WIDTH );
+    rd_empty  = ( cnt_quan_pxl == 0 );
+  end
+
+  // 
+  always_comb begin
+    find_x0 = xy_0_i[26:16];
+    find_y0 = xy_0_i[9:0];
+
+    find_x1 = xy_1_i[26:16];
+    find_y1 = xy_1_i[9:0];
+  end
 
 
   typedef enum logic [1:0] { 
@@ -46,7 +65,6 @@ module roi_axis
                    }  type_enum;
    
   type_enum state, next_st;
-
 
 
 
@@ -62,12 +80,24 @@ module roi_axis
 
   always_ff @( posedge clk_i or posedge arst_i ) begin
     if( arst_i ) begin
+      pixel         <= 0;
+      cnt_quan_pxl  <= 0;
 
+      cnt_l_x       <= 0;
+      cnt_l_y       <= 0;
+
+      cnt_s_x       <= 0;
+      cnt_s_y       <= 0;
+      
+      tdata_o  <= 0;
+      tvalid_o <= 0;
+      tlast_o  <= 0;
     end
     else begin
       case( state )
         IDLE: begin
-        
+          next_st <= FIND;
+          
         end
 
         FIND: begin

@@ -1,4 +1,9 @@
-module roi_top(
+/*module roi_top
+#(
+  parameter           WIDTH  = 799,   // 
+                      HEIGHT = 599 
+)
+(
 
 );
 
@@ -21,4 +26,4 @@ module roi_top(
     .xy_1_o  ( xy_1 )
   );
 
-endmodule
+endmodule*/
