@@ -56,6 +56,8 @@ module roi_axis_tb
   );
 
 
+  bit [$clog2( HEIGHT * WIDTH )-1:0]  cnt_q_pxl;
+
   initial begin
     clk_i  = '0;
     forever #10 clk_i  = ~clk_i;
@@ -63,7 +65,7 @@ module roi_axis_tb
 
   initial begin
     arst_i = '1;
-    repeat (2)  @ ( posedge clk_i );
+    repeat (1)  @ ( posedge clk_i );
     arst_i = '0;
   end
 
@@ -71,14 +73,20 @@ module roi_axis_tb
 
   initial begin 
     pkt = new();
-    $display("Start of data submission");
 
+    
+
+    repeat (1)  @ ( posedge clk_i );
     tlast_i   = 0;
     tvalid_i  = 1;
 
     // Set coordinates to points
-    xy_0_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd200};    // [26:16] x0, [9:0] y0
-    xy_1_i[31:0]  = { 6'd0, 10'd600, 6'd0, 10'd400};    // [26:16] x1, [9:0] y1
+    xy_0_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd200 };    // [26:16] x0, [9:0] y0
+    xy_1_i[31:0]  = { 6'd0, 10'd600, 6'd0, 10'd400 };    // [26:16] x1, [9:0] y1
+
+    // The tlast_i signal is set when the latest data arrives
+    repeat ( ((HEIGHT + 1) * (WIDTH + 1)) + 2 ) @ ( posedge clk_i );
+    tlast_i = 1;
 
   end
 
@@ -86,14 +94,14 @@ module roi_axis_tb
 
   // Randomization of data
   always_ff @( posedge clk_i ) begin
-    //if( tvalid_i ) begin
+    if( tvalid_i ^ tlast_i ) begin
       pkt.randomize();
       tdata_i <= pkt.random_val( pkt.pixel); 
       pkt.print( tdata_i );
-    //end
-    //else begin
-      //tdata_i <= 0;
-    //end
+    end
+    else begin
+      tdata_i <= 0;
+    end
   end
 
 
