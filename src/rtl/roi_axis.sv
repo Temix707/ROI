@@ -31,11 +31,11 @@ module roi_axis
   logic [$clog2( WIDTH  )-1:0]          cnt_l_x;
   logic [$clog2( HEIGHT )-1:0]          cnt_l_y;
 
-  // X (width) and Y (height) coordinate counters for a SMALL area (to check)
-  logic [$clog2( WIDTH  )-1:0]          cnt_s_x;
+  // X (width) and Y (height) coordinate counters for a SMALL area (to check) and also counts all pixels in a small area
+  logic [$clog2( HEIGHT * WIDTH )-1:0]  cnt_s_x_pxl;
   //logic [$clog2( HEIGHT )-1:0]        cnt_s_y; 
 
-  // —coordinate buffers
+  // –°coordinate buffers
   logic [9:0]                           x0, y0;
   logic [9:0]                           x1, y1;
 
@@ -68,8 +68,8 @@ module roi_axis
     end 
     else begin                                                    // if point xy1 is to the left of point xy0
       find_xy0_r  = ( cnt_l_x == x0 ) &&  ( cnt_l_y == y0 );
-      find_xy1_l  = ( cnt_l_x >= x1 ) &&  ( cnt_l_y >= y1 );      // »Á-Á‡ ÚÓ„Ó, ˜ÚÓ x0 Ì‡ıÓ‰ËÎÒˇ Ô‡‚ÂÂ, ‰ÓÔËÒ‡Î ÁÌ‡Í (>=) ‰Îˇ ÚÓ„Ó, ˜ÚÓ·˚ Ò˜ÂÚ˜ËÍ  
-    end                                                           // ‰ÓÒ˜ËÚ˚‚‡Î ‰Ó ÔÓÒÎÂ‰ÌËı ‰‡ÌÌ˚ı ‚ Ï‡ÎÂÌ¸ÍÓÈ Ó·Î‡ÒÚË Ë ÓÚÔ‡‚ÎˇÎ ÒË„Ì‡Î tlast_o.
+      find_xy1_l  = ( cnt_l_x >= x1 ) &&  ( cnt_l_y >= y1 );      // –ò–∑-–∑–∞ —Ç–æ–≥–æ, —á—Ç–æ x0 –Ω–∞—Ö–æ–¥–∏–ª—Å—è –ø—Ä–∞–≤–µ–µ, –¥–æ–ø–∏—Å–∞–ª –∑–Ω–∞–∫ (>=) –¥–ª—è —Ç–æ–≥–æ, —á—Ç–æ–±—ã —Å—á–µ—Ç—á–∏–∫  
+    end                                                           // –¥–æ—Å—á–∏—Ç—ã–≤–∞–ª –¥–æ –ø–æ—Å–ª–µ–¥–Ω–∏—Ö –¥–∞–Ω–Ω—ã—Ö –≤ –º–∞–ª–µ–Ω—å–∫–æ–π –æ–±–ª–∞—Å—Ç–∏ –∏ –æ—Ç–ø—Ä–∞–≤–ª—è–ª —Å–∏–≥–Ω–∞–ª tlast_o.
   end
 
 
@@ -102,7 +102,7 @@ module roi_axis
     if( arst_i ) begin
       tdata_o       <= 0; tvalid_o      <= 0; tlast_o       <= 0; 
       cnt_l_x       <= 0; cnt_l_y       <= 0;
-      cnt_s_x       <= 0; //cnt_s_y       <= 0;
+      cnt_s_x_pxl       <= 0; //cnt_s_y       <= 0;
       cnt_quan_pxl  <= 0; cnt_last_val  <= 0;
     end
     else begin
@@ -123,8 +123,8 @@ module roi_axis
 
         AREA_PH:  begin
           
-          if( !(tvalid_i ^ tlast_i) ) next_st   <= IDLE;
-          else                        next_st   <= AREA_PH;
+          if( !( tvalid_i ^ tlast_i ) ) next_st   <= IDLE;
+          else                          next_st   <= AREA_PH;
         
           //////// Large area counters ////////
           // Counting the width and height counter for a large area
@@ -140,11 +140,19 @@ module roi_axis
           if( cnt_l_y == (HEIGHT + 1) )   cnt_l_y      <= 0;
 
           // Counting the count of the amount of data
-          if( cnt_l_y !== (HEIGHT + 1) )  cnt_quan_pxl <= cnt_quan_pxl + 1;
-          else                            cnt_quan_pxl <= 0;
+          if( cnt_l_y !== (HEIGHT + 1) ) begin
+             cnt_quan_pxl <= cnt_quan_pxl + 1;
+             
+              assert ( cnt_quan_pxl == ( (WIDTH+1)*(HEIGHT+1) - 1 ) ) $display  ("All pixels were recorded in a large area");     // (601 * 801) - 1 = 481400
+              else                                                    $display  ("Not all pixels were transferred to a large area");
+
+          end 
+          else begin
+            cnt_quan_pxl <= 0;
+          end
 
           // If the counter is full in a large area
-          if( cnt_quan_pxl == ((HEIGHT + 1) * (WIDTH + 1)) ) begin
+          if( cnt_quan_pxl == ( ( HEIGHT + 1 ) * ( WIDTH + 1 ) ) ) begin
             cnt_l_x   <= 0;
             cnt_l_y   <= 0;
           end
@@ -154,21 +162,25 @@ module roi_axis
           ////// Selections a small area //////
             case( x0 > x1 )
               X0_L: begin
-                if( ( cnt_l_x >= (x0) ) && ( cnt_l_x <= (x1-1) ) && ( cnt_l_y > (y0-1) ) && ( cnt_l_y < (y1+1) )) begin
-                  tvalid_o  <= tvalid_i;
-                  tdata_o   <= tdata_i;
+                if( ( cnt_l_x > (x0-1) ) && ( cnt_l_x < (x1+1) ) && ( cnt_l_y > (y0-1) ) && ( cnt_l_y < (y1+1) )) begin
+                  tvalid_o    <= tvalid_i;
+                  tdata_o     <= tdata_i;
 
-                  cnt_s_x   <= cnt_s_x + 1;
+                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;
+
+                  assert ( cnt_s_x_pxl == ( x1 - x0 + 1) * ( y1 - y0 + 1) - 1 ) $display  ("All pixels from a small area have been read");  
+                  else                                                          $display  ("Not all pixels were transferred to a small area");
+                
                 end
                 else begin
-                  tvalid_o  <= 0;
-                  tdata_o   <= 0;
+                  tvalid_o    <= 0;
+                  tdata_o     <= 0;
               
-                  cnt_s_x   <= 0;
+                  cnt_s_x_pxl <= cnt_s_x_pxl;
                 end
 
                 if( find_xy1_r ) begin
-                  tlast_o   <= 1;
+                  tlast_o     <= 1;
                 end
 
               end
@@ -176,16 +188,16 @@ module roi_axis
 
               X0_R: begin
                 if( ( cnt_l_x <= (x0-1) ) && ( cnt_l_x >= (x1) ) && ( cnt_l_y > (y0-1) ) && ( cnt_l_y < (y1+1) )) begin
-                  tvalid_o  <= tvalid_i;
-                  tdata_o   <= tdata_i;
+                  tvalid_o    <= tvalid_i;
+                  tdata_o     <= tdata_i;
 
-                  cnt_s_x   <= cnt_s_x + 1;
+                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;
                 end
                 else begin
-                  tvalid_o  <= 0;
-                  tdata_o   <= 0;
+                  tvalid_o    <= 0;
+                  tdata_o     <= 0;
               
-                  cnt_s_x   <= 0;
+                  cnt_s_x_pxl <= cnt_s_x_pxl;
                 end
 
                 if( find_xy1_l) begin

@@ -82,7 +82,7 @@ module roi_axis_tb
 
     // Set coordinates to points
     xy_0_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd200 };    // [26:16] x0, [9:0] y0  (200,200)
-    xy_1_i[31:0]  = { 6'd0, 10'd600, 6'd0, 10'd700 };    // [26:16] x1, [9:0] y1  (600,400)
+    xy_1_i[31:0]  = { 6'd0, 10'd600, 6'd0, 10'd400 };    // [26:16] x1, [9:0] y1  (600,400)
 
     // The tlast_i signal is set when the latest data arrives
     repeat ( ((HEIGHT + 1) * (WIDTH + 1)) + 2 ) @ ( posedge clk_i );
@@ -91,68 +91,38 @@ module roi_axis_tb
   end
 
 
-
   // Randomization of data
   always_ff @( posedge clk_i ) begin
     if( tvalid_i ^ tlast_i ) begin
       pkt.randomize();
       tdata_i <= pkt.random_val( pkt.pixel); 
-      pkt.print( tdata_i );
+      // pkt.print( tdata_i );
     end
     else begin
       tdata_i <= 0;
     end
   end
+
+
+  // ASSERTIONS
+  sequence validReq;
+    ( tvalid_i ##1 tvalid_o );
+  endsequence
+
+  sequence lastReq;
+    (tvalid_o ##1 tlast_o );
+  endsequence
+
+  property pExampleValid;
+    @(posedge clk_i) ( validReq );
+  endproperty
+
+  property pExampleLast;
+    @(posedge clk_i) ( lastReq );
+  endproperty
+
+  assert property ( pExampleValid );
+  assert property ( pExampleLast  );
 
 
 endmodule
-
-
-
-
-
-
-
-
-
-/*
-
-  always_ff @( posedge clk_i ) begin
-    if( cnt_q_pxl == ( HEIGHT * WIDTH ) ) begin
-      tlast_i <= 1;
-    end
-    else begin
-      tlast_i <= 0;
-    end
-  end
-
-  // Validity of data in a large area
-  always_ff @( posedge clk_i ) begin
-    if( tlast_i ) begin
-      tvalid_i <= 0;
-    end
-    else begin
-      tvalid_i = 1;
-    end
-  end
-
-  // Randomization of data
-  always_ff @( posedge clk_i ) begin
-    if( tvalid_i ) begin
-      pkt.randomize();
-      tdata_i <= pkt.random_val( pkt.pixel); 
-      pkt.print( tdata_i );
-    end
-    else begin
-      tdata_i <= 0;
-    end
-  end
-
-  // Adding a counter
-  always_ff @( posedge clk_i ) begin
-    if( tvalid_i ) begin
-      cnt_q_pxl <= cnt_q_pxl + 1;
-    end
-  end
-
-*/
