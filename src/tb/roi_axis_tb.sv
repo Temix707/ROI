@@ -81,8 +81,8 @@ module roi_axis_tb
     tvalid_i  = 1;
 
     // Set coordinates to points
-    xy_0_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd200 };    // [26:16] x0, [9:0] y0
-    xy_1_i[31:0]  = { 6'd0, 10'd600, 6'd0, 10'd400 };    // [26:16] x1, [9:0] y1
+    xy_0_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd200 };    // [26:16] x0, [9:0] y0  (200,200)
+    xy_1_i[31:0]  = { 6'd0, 10'd600, 6'd0, 10'd700 };    // [26:16] x1, [9:0] y1  (600,400)
 
     // The tlast_i signal is set when the latest data arrives
     repeat ( ((HEIGHT + 1) * (WIDTH + 1)) + 2 ) @ ( posedge clk_i );
