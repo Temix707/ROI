@@ -41,7 +41,7 @@ module roi_axis_tb
 
   roi_axis  
   # ( WIDTH, HEIGHT, BIT_D, BIT_C )
-  DUT ( 
+  DUT_AXIS ( 
     .clk_i    ( clk_i     ),
     .arst_i   ( arst_i    ),
 

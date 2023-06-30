@@ -35,7 +35,7 @@ module roi_axis
   logic [$clog2( HEIGHT * WIDTH )-1:0]  cnt_s_x_pxl;
   //logic [$clog2( HEIGHT )-1:0]        cnt_s_y; 
 
-  // Сcoordinate buffers
+  // Coordinate buffers
   logic [9:0]                           x0, y0;
   logic [9:0]                           x1, y1;
 
