@@ -53,8 +53,8 @@ module roi_apb
 
   assign apb_dout_next = apb_sel_roi_val ? ( xy_val_ff ) : ( '0 );
 
-  assign xy_0_o = apb_dout_ff [31:0];
-  assign xy_1_o = apb_dout_ff [63:32];
+  assign xy_0_o        = apb_dout_ff [31:0];
+  assign xy_1_o        = apb_dout_ff [63:32];
 
 endmodule
 

@@ -21,9 +21,8 @@ module roi_apb_tb
   logic [APB_DATA_O_WIDTH-1:0]  xy_1_o;
 
 
-  roi_apb 
-  # ( APB_DATA_I_WIDTH, APB_DATA_O_WIDTH, APB_ADDR_WIDTH )
-  APB_ROI (
+  roi_apb DUT_APB 
+  (
     .clk_i        ( clk_i         ),
     .arst_i       ( arst_i        ),
 
@@ -58,10 +57,10 @@ module roi_apb_tb
 
 
   initial begin
-    apb_psel_i   = 1;
-    apb_pwrite_i = 1;
+    apb_psel_i          = 1;
+    apb_pwrite_i        = 1;
 
-    apb_paddr_i = 12'h0;
+    apb_paddr_i         = 12'h0;
 
     apb_pwdata_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd200 };    
     apb_pwdata_i[63:32] = { 6'd0, 10'd600, 6'd0, 10'd400 };

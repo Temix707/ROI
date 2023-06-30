@@ -1,25 +1,25 @@
 module roi_axis
 #(
-  parameter                 WIDTH  = 800,                           //  width of the large area   800
-                            HEIGHT = 600,                           //  height of a large area    600
+  parameter                       WIDTH  = 800,                           
+                                  HEIGHT = 600,                           
 
-                            BIT_D  = 8,
-                            BIT_C  = 32
+                                  BIT_DATA_O  = 8,
+                                  BIT_COORD  = 32
 )
 (
-  input   logic             clk_i,
-  input   logic             arst_i,
+  input   logic                   clk_i,
+  input   logic                   arst_i,
 
-  input   logic [BIT_D-1:0] tdata_i,                                //  incoming pixels in a large area
-  input   logic             tvalid_i,                               //  signal of readiness for data transfer to a large area
-  input   logic             tlast_i,                                //  signal signaling the last piece of data of a large area
+  input   logic [BIT_DATA_O-1:0]  tdata_i,                                //  incoming pixels in a large area
+  input   logic                   tvalid_i,                               //  signal of readiness for data transfer to a large area
+  input   logic                   tlast_i,                                //  signal signaling the last piece of data of a large area
 
-  input   logic [BIT_C-1:0] xy_0_i,                                 //  x0[26:16] y0[9:0]  the register responsible for the coordinate of the first point
-  input   logic [BIT_C-1:0] xy_1_i,                                 //  x1[26:16] y1[9:0]  the register responsible for the coordinate of the second point
+  input   logic [BIT_COORD-1:0]   xy_0_i,                                 //  x0[26:16] y0[9:0]  the register responsible for the coordinate of the first point
+  input   logic [BIT_COORD-1:0]   xy_1_i,                                 //  x1[26:16] y1[9:0]  the register responsible for the coordinate of the second point
 
-  output  logic [BIT_D-1:0] tdata_o,                                //  exiting pixels from a small area
-  output  logic             tvalid_o,                               //  signal of readiness for data transmission from a small area
-  output  logic             tlast_o                                 //  signal signaling the last piece of data of a small area
+  output  logic [BIT_DATA_O-1:0]  tdata_o,                                //  exiting pixels from a small area
+  output  logic                   tvalid_o,                               //  signal of readiness for data transmission from a small area
+  output  logic                   tlast_o                                 //  signal signaling the last piece of data of a small area
 );
 
 
@@ -109,7 +109,7 @@ module roi_axis
       case( state )
         IDLE:     begin
           if( !((x0 > WIDTH) || (y0 > HEIGHT) || (x1 > WIDTH) || (y1 > HEIGHT)) ) begin   // Checking coordinates beyond the limit of a large area
-            if( tvalid_i ^ tlast_i ) begin
+            if( tvalid_i && !tlast_i ) begin
               next_st <= AREA_PH;
             end
             else begin
@@ -123,8 +123,8 @@ module roi_axis
 
         AREA_PH:  begin
           
-          if( !( tvalid_i ^ tlast_i ) ) next_st   <= IDLE;
-          else                          next_st   <= AREA_PH;
+          if( !( tvalid_i && !tlast_i ) ) next_st   <= IDLE;
+          else                            next_st   <= AREA_PH;
         
           //////// Large area counters ////////
           // Counting the width and height counter for a large area

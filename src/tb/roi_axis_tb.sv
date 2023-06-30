@@ -15,33 +15,32 @@ endclass
 
 module roi_axis_tb
 #(
-  parameter               WIDTH  = 800,                 
-                          HEIGHT = 600,                 
+  parameter               WIDTH       = 800,                 
+                          HEIGHT      = 600,                 
 
-                          BIT_D  = 8,
-                          BIT_C  = 32,
+                          BIT_DATA_O  = 8,
+                          BIT_COORD   = 32, 
 
-                          SUM_PIX = ( WIDTH + 1 ) * ( HEIGHT + 1 ) // Example (0...800) *  (0...600)
+                          SUM_PIX     = ( WIDTH + 1 ) * ( HEIGHT + 1 ) // Example (0...800) *  (0...600)
 )();
 
   logic                   clk_i;
   logic                   arst_i;
 
-  logic       [BIT_D-1:0] tdata_i;
+  logic [BIT_DATA_O-1:0]  tdata_i;
   logic                   tvalid_i;
   logic                   tlast_i;
 
-  logic       [BIT_C-1:0] xy_0_i;
-  logic       [BIT_C-1:0] xy_1_i;
+  logic [BIT_COORD-1:0]   xy_0_i;
+  logic [BIT_COORD-1:0]   xy_1_i;
 
-  logic       [BIT_D-1:0] tdata_o;
+  logic [BIT_DATA_O-1:0]  tdata_o;
   logic                   tvalid_o;
   logic                   tlast_o;
 
 
-  roi_axis  
-  # ( WIDTH, HEIGHT, BIT_D, BIT_C )
-  DUT_AXIS ( 
+  roi_axis DUT_AXIS 
+  ( 
     .clk_i    ( clk_i     ),
     .arst_i   ( arst_i    ),
 
@@ -58,8 +57,8 @@ module roi_axis_tb
   );
 
   // Coordinate buffers
-  logic [9:0]                           x0, y0;
-  logic [9:0]                           x1, y1;
+  logic [9:0] x0, y0;
+  logic [9:0] x1, y1;
 
   // CLK
   initial begin
@@ -84,7 +83,7 @@ module roi_axis_tb
     tlast_i       = 0;
     tvalid_i      = 1;
 
-    // Set coordinates to points                         //   
+    // Set coordinates to points                            
     xy_0_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd200 };    // [26:16] x0, [9:0] y0  (200,200)
     xy_1_i[31:0]  = { 6'd0, 10'd600, 6'd0, 10'd400 };    // [26:16] x1, [9:0] y1  (600,400)
 
@@ -101,7 +100,7 @@ module roi_axis_tb
   end
 
   // Small area size
-  logic [BIT_C-1:0] SUM_PIX_SMALL_AREA;
+  logic [BIT_COORD - 1:0] SUM_PIX_SMALL_AREA;
   assign SUM_PIX_SMALL_AREA = (( x1 - x0 + 1) * ( y1 - y0 + 1));
 
 
@@ -121,7 +120,7 @@ module roi_axis_tb
 
 
 
-  logic [BIT_D - 1:0] data_i_que [$];       // Queue for checking data in a large area      
+  logic [BIT_DATA_O - 1:0] data_i_que [$];       // Queue for checking data in a large area      
   
   logic [1:0]         cnt_delay;            // Input data delay counter
 
@@ -144,14 +143,14 @@ module roi_axis_tb
         end
       end      
       
-      if( data_i_que.size () == SUM_PIX ) begin
+      if( data_i_que.size() == SUM_PIX ) begin
         $display  ( "ALL DATA WAS RECORDED OVER A LARGE AREA: \nIt should have come: %0d, \t Has come: %0d, \t Time: %0t \n"
         , SUM_PIX, data_i_que.size(), $time );
       end
-      else if( data_i_que.size () == 0 ) begin
+      else if( data_i_que.size() == 0 ) begin
         $display  ( "There are no transmitted pixels" );
       end
-      else if( data_i_que.size () > SUM_PIX ) begin
+      else if( data_i_que.size() > SUM_PIX ) begin
         $display  ( "All pixels have already been transferred" );
       end
       else begin
@@ -165,10 +164,10 @@ module roi_axis_tb
 
 
 
-  logic [BIT_D - 1:0] data_o_que [$];
-  logic [BIT_D - 1:0] cnt_data_o_que [$];
+  logic [BIT_DATA_O - 1:0] data_o_que [$];
+  logic [BIT_DATA_O - 1:0] cnt_data_o_que [$];
 
-  logic [BIT_D - 1:0] down_data_expected;   
+  logic [BIT_DATA_O - 1:0] down_data_expected;   
 
   ///// A queue check block for a small area /////
   always_ff @( posedge clk_i or posedge arst_i) begin
@@ -179,8 +178,9 @@ module roi_axis_tb
     else begin
 
       if( tvalid_o ) begin
-        data_o_que.push_back(tdata_i);
         cnt_data_o_que.push_back(tdata_i);
+
+        data_o_que.push_back(tdata_i);
         down_data_expected <= data_o_que.pop_back();
       end
 
