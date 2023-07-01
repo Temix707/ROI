@@ -23,7 +23,7 @@ module roi_axis
 );
 
 
-  logic [$clog2( HEIGHT * WIDTH )-1:0]  cnt_quan_pxl;               //  data quantity counter (log2 (480000) = 19 bit)
+  logic [$clog2( HEIGHT * WIDTH )-1:0]  cnt_quan_pxl;                     //  data quantity counter (log2 (480000) = 19 bit)
 
   logic [$clog2( WIDTH  )-1:0]          cnt_last_val;
 
@@ -46,10 +46,14 @@ module roi_axis
   // Counters of fullness and emptiness
   logic                                 wr_full, rd_empty;
 
+  // Registers for input data (remove the delay)
+  logic [BIT_DATA_O-1:0]                data_ff_1, data_ff_2;
+
+
 
   always_comb begin
     // Full block and empty block counters
-    wr_full   = ( cnt_quan_pxl == ((HEIGHT + 1) * (WIDTH + 1)) );   // ((HEIGHT + 1) * (WIDTH + 1)) == 481401 values (0-600,0-800)
+    wr_full   = ( cnt_quan_pxl == ((HEIGHT + 1) * (WIDTH + 1)) );         // ((HEIGHT + 1) * (WIDTH + 1)) == 481401 values (0-600,0-800)
     rd_empty  = ( cnt_quan_pxl == 0 );
 
     // Assigning coordinates
@@ -62,14 +66,14 @@ module roi_axis
 
   // Finding points
   always_comb begin
-    if ( x0 < x1 ) begin                                          // if the point xy0 is to the left of the point xy1
+    if ( x0 < x1 ) begin                                                  // if the point xy0 is to the left of the point xy1
       find_xy0_l  = ( cnt_l_x == x0 ) &&  ( cnt_l_y == y0 );
       find_xy1_r  = ( cnt_l_x == x1 ) &&  ( cnt_l_y == y1 );
     end 
-    else begin                                                    // if point xy1 is to the left of point xy0
+    else begin                                                            // if point xy1 is to the left of point xy0
       find_xy0_r  = ( cnt_l_x == x0 ) &&  ( cnt_l_y == y0 );
-      find_xy1_l  = ( cnt_l_x >= x1 ) &&  ( cnt_l_y >= y1 );      // Из-за того, что x0 находился правее, дописал знак (>=) для того, чтобы счетчик  
-    end                                                           // досчитывал до последних данных в маленькой области и отправлял сигнал tlast_o.
+      find_xy1_l  = ( cnt_l_x >= x1 ) &&  ( cnt_l_y >= y1 );              // Из-за того, что x0 находился правее, дописал знак (>=) для того, чтобы счетчик  
+    end                                                                   // досчитывал до последних данных в маленькой области и отправлял сигнал tlast_o.
   end
 
 
@@ -125,8 +129,15 @@ module roi_axis
           
           if( !( tvalid_i && !tlast_i ) ) next_st   <= IDLE;
           else                            next_st   <= AREA_PH;
-        
+          
+          data_ff_1   <= tdata_i;
+          data_ff_2   <= data_ff_1;
+
+
+          /////////////////////////////////////
           //////// Large area counters ////////
+          /////////////////////////////////////
+
           // Counting the width and height counter for a large area
           if( cnt_l_x !== WIDTH ) begin
             cnt_l_x   <= cnt_l_x + 1;
@@ -155,12 +166,17 @@ module roi_axis
           /////////////////////////////////////
 
 
+
+
+          /////////////////////////////////////
           ////// Selections a small area //////
+          /////////////////////////////////////
+
             case( x0 > x1 )
               X0_L: begin
                 if( ( cnt_l_x > (x0-1) ) && ( cnt_l_x < (x1+1) ) && ( cnt_l_y > (y0-1) ) && ( cnt_l_y < (y1+1) )) begin
                   tvalid_o    <= tvalid_i;
-                  tdata_o     <= tdata_i;
+                  tdata_o     <= data_ff_2;
 
                   cnt_s_x_pxl <= cnt_s_x_pxl + 1;              
                 end

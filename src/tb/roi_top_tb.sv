@@ -120,7 +120,7 @@ module roi_top_tb
     tlast_i             = 1;
   end
 
-  logic [BIT_DATA_O-1:0]        data_ff_1, data_ff_2;
+  
   ////////////////////////////////
   //// Randomization of data  ////
   ////////////////////////////////
@@ -128,9 +128,7 @@ module roi_top_tb
   always_ff @( posedge clk_i ) begin
     if( tvalid_i && !tlast_i ) begin
       pkt.randomize();
-      data_ff_1 <= pkt.random_val( pkt.pixel);
-      data_ff_2 <= data_ff_1;
-      tdata_i   <= data_ff_2; 
+      tdata_i <= pkt.random_val( pkt.pixel);
       // pkt.print( tdata_i );
     end
     else begin
