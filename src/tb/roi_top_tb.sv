@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 class trans; 
-  rand bit [7:0]                            pixel;
+  rand bit [7:0] pixel;
 
   function automatic logic [7:0] random_val( logic [7:0] pixel); 
     this.pixel = pixel;  
@@ -116,19 +116,21 @@ module roi_top_tb
     x1                  = apb_pwdata_i[57:48];
     y1                  = apb_pwdata_i[41:32];
 
-    repeat ( ((HEIGHT + 1) * (WIDTH + 1)) + 2 ) @ ( posedge clk_i );
+    repeat ( (( HEIGHT + 1 ) * ( WIDTH + 1 )) + 2 ) @ ( posedge clk_i );
     tlast_i             = 1;
   end
 
-
+  logic [BIT_DATA_O-1:0]        data_ff_1, data_ff_2;
   ////////////////////////////////
   //// Randomization of data  ////
   ////////////////////////////////
   
   always_ff @( posedge clk_i ) begin
-    if( tvalid_i ^ tlast_i ) begin
+    if( tvalid_i && !tlast_i ) begin
       pkt.randomize();
-      tdata_i <= pkt.random_val( pkt.pixel); 
+      data_ff_1 <= pkt.random_val( pkt.pixel);
+      data_ff_2 <= data_ff_1;
+      tdata_i   <= data_ff_2; 
       // pkt.print( tdata_i );
     end
     else begin

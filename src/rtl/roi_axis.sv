@@ -142,10 +142,6 @@ module roi_axis
           // Counting the count of the amount of data
           if( cnt_l_y !== (HEIGHT + 1) ) begin
              cnt_quan_pxl <= cnt_quan_pxl + 1;
-             /*
-              assert ( cnt_quan_pxl == ( (WIDTH+1)*(HEIGHT+1) - 1 ) ) $display  ("All pixels were recorded in a large area");     // (601 * 801) - 1 = 481400
-              else                                                    $display  ("Not all pixels were transferred to a large area");
-              */
           end 
           else begin
             cnt_quan_pxl <= 0;
@@ -166,11 +162,7 @@ module roi_axis
                   tvalid_o    <= tvalid_i;
                   tdata_o     <= tdata_i;
 
-                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;
-                  /*
-                  assert ( cnt_s_x_pxl == ( x1 - x0 + 1) * ( y1 - y0 + 1) - 1 ) $display  ("All pixels from a small area have been read");  
-                  else                                                          $display  ("Not all pixels were transferred to a small area");
-                  */                
+                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;              
                 end
                 else begin
                   tvalid_o    <= 0;
