@@ -6,7 +6,8 @@ ROI.sim/
 ROI.srcs/
 
 #scheme/
-!src/
+src/xdc/
+src/src.rar
 
 
 ## log files

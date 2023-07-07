@@ -1,10 +1,10 @@
 module roi_axis
 #(
-  parameter                       WIDTH  = 800,                           
-                                  HEIGHT = 600,                           
+  parameter                       WIDTH       = 800,                                  
+                                  HEIGHT      = 600,                   
 
                                   BIT_DATA_O  = 8,
-                                  BIT_COORD  = 32
+                                  BIT_COORD   = 32
 )
 (
   input   logic                   clk_i,
@@ -22,6 +22,9 @@ module roi_axis
   output  logic                   tlast_o                                 //  signal signaling the last piece of data of a small area
 );
 
+
+  localparam X0_L = 0;
+  localparam X0_R = 1;
 
   logic [$clog2( HEIGHT * WIDTH )-1:0]  cnt_quan_pxl;                     //  data quantity counter (log2 (480000) = 19 bit)
 
@@ -49,11 +52,11 @@ module roi_axis
   // Registers for input data (remove the delay)
   logic [BIT_DATA_O-1:0]                data_ff_1, data_ff_2;
 
-
+  logic                                 tvalid_ff_1, tvalid_ff_2;
 
   always_comb begin
     // Full block and empty block counters
-    wr_full   = ( cnt_quan_pxl == ((HEIGHT + 1) * (WIDTH + 1)) );         // ((HEIGHT + 1) * (WIDTH + 1)) == 481401 values (0-600,0-800)
+    wr_full   = ( cnt_quan_pxl == ((HEIGHT) * (WIDTH)) );         // HEIGHT * WIDTH = 600 * 800 = 480_000 data
     rd_empty  = ( cnt_quan_pxl == 0 );
 
     // Assigning coordinates
@@ -83,26 +86,225 @@ module roi_axis
   }  type_state;
    
   type_state state, next_st;
-
-
-  typedef enum logic [0:0] { 
-                      X0_L      = 0,
-                      X0_R      = 1     
-  }  type_x0_coordinate;
    
+ 
+
+
+  ////////////////////////////////////////
+  // States of the finite state machine //
+  ////////////////////////////////////////
+
+  always_ff @( posedge clk_i or posedge arst_i ) begin
+    if( arst_i )                          state <= IDLE;    
+    else                                  state <= next_st;
+  end
+
+
+  always_ff @(posedge clk_i or negedge arst_i) begin
+    if( arst_i ) begin
+      tvalid_ff_1 <= 0;
+      tvalid_ff_2 <= 0;
+    end
+    else begin
+      tvalid_ff_1 <= tvalid_i;
+      tvalid_ff_2 <= tvalid_ff_1;
+    end
+    
+
+    
+  end
+
+
+
+  always_comb begin
+    next_st = IDLE;
+
+    case( state )
+      IDLE: begin
+        // Checking coordinates beyond the limit of a large area
+        if( !((x0 > WIDTH) || (y0 > HEIGHT) || (x1 > WIDTH) || (y1 > HEIGHT)) ) begin   
+          if( tvalid_ff_2 && !tlast_i )       next_st = AREA_PH;
+          else                              next_st = IDLE;
+        end
+        else begin
+                                            next_st = IDLE;
+        end
+      end
+
+      AREA_PH: begin
+          if( !( tvalid_ff_2 && !tlast_i ) )  next_st = IDLE;
+          else                              next_st = AREA_PH;
+      end
+
+      default:                              next_st = IDLE;
+    endcase
+  end
+
+  /////////////////////////////////////////////
+  // Logic of a combinational finite machine //
+  /////////////////////////////////////////////
+
+  always_comb begin
+    
+    tdata_o   = 0; 
+    tvalid_o  = 0; 
+    tlast_o   = 0;
+
+    case ( state )
+      AREA_PH:  begin
+        case( x0 > x1 )
+          X0_L: begin
+            if( ( cnt_l_x > ( x0 - 1 ) ) && ( cnt_l_x < ( x1 + 1 ) ) && ( cnt_l_y > ( y0 - 1 ) ) && ( cnt_l_y < ( y1 + 1 ) )) begin
+              tvalid_o    = tvalid_ff_2;
+              tdata_o     = tdata_i;
+            end
+            else begin
+              tvalid_o    = 0;
+              tdata_o     = 0;
+            end
+
+            if( find_xy1_r ) begin
+              tlast_o     = 1;
+            end
+          end
+
+          X0_R: begin
+            if( ( cnt_l_x <= ( x0 - 1 ) ) && ( cnt_l_x >= ( x1 ) ) && ( cnt_l_y > ( y0 - 1 ) ) && ( cnt_l_y < ( y1 + 1 ) )) begin
+              tvalid_o    = tvalid_ff_2;
+              tdata_o     = tdata_i;
+            end
+            else begin
+              tvalid_o    = 0;
+              tdata_o     = 0;
+            end
+
+            if( find_xy1_l) begin
+              if( cnt_last_val == ( x0 - x1 ) ) begin
+                tlast_o   = 1;
+              end
+            end
+          end
+        endcase
+      end
+
+    endcase
+  end
+
 
 
   always_ff @( posedge clk_i or posedge arst_i ) begin
-    if( arst_i ) begin
-      next_st <= IDLE;    
-    end 
-    else begin
-      state <= next_st;
+    if( tvalid_ff_2 && !tlast_i ) begin
+      data_ff_1   <= tdata_i;
+      data_ff_2   <= data_ff_1;
     end
   end
 
 
+  ////////////////////////////////////////////
+  // Sequential logic of a finite automaton //
+  ////////////////////////////////////////////
+
   always_ff @( posedge clk_i or posedge arst_i ) begin
+    if( arst_i ) begin 
+      cnt_l_x       <= 0;   cnt_l_y       <= 1;
+      cnt_s_x_pxl   <= 0;
+      cnt_quan_pxl  <= 0;   cnt_last_val  <= 0;
+      data_ff_1     <= 0;   data_ff_2     <= 0;
+    end
+    else begin
+      case( state )
+        AREA_PH:  begin
+
+          /////////////////////////////////////
+          //////// Large area counters ////////
+          /////////////////////////////////////
+
+          // Counting the width and height counter for a large area
+          if( cnt_l_x !== WIDTH ) begin
+            cnt_l_x       <= cnt_l_x + 1;
+          end
+          else begin
+            cnt_l_x       <= 1;
+            cnt_l_y       <= cnt_l_y + 1;
+          end
+
+          // Counting the count of the amount of data
+          if( cnt_l_y !== HEIGHT + 1 )  begin
+            cnt_quan_pxl  <= cnt_quan_pxl + 1;
+          end
+          else begin                           
+            cnt_quan_pxl  <= 1;
+            cnt_l_y       <= 1;
+          end
+
+          // If the counter is full in a large area
+          if( cnt_quan_pxl == ( HEIGHT * WIDTH ) ) begin
+            cnt_l_x       <= 0;
+            cnt_l_y       <= 0;
+          end
+
+
+
+          /////////////////////////////////////
+          ////// Selections a small area //////
+          /////////////////////////////////////
+
+            case( x0 > x1 )
+              X0_L: begin
+                if( ( cnt_l_x > ( x0 - 1 ) ) && ( cnt_l_x < ( x1 + 1 ) ) && ( cnt_l_y > ( y0 - 1 ) ) && ( cnt_l_y < ( y1 + 1 ) )) begin
+                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;              
+                end
+                else begin
+                  cnt_s_x_pxl <= cnt_s_x_pxl;
+                end
+              end
+
+
+              X0_R: begin
+                if( ( cnt_l_x <= ( x0 - 1 ) ) && ( cnt_l_x >= ( x1 ) ) && ( cnt_l_y > ( y0 - 1 ) ) && ( cnt_l_y < ( y1 + 1 ) )) begin
+                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;
+                end
+                else begin
+                  cnt_s_x_pxl <= cnt_s_x_pxl;
+                end
+
+                if( find_xy1_l) begin
+                  if( cnt_last_val == ( x0 - x1 ) ) begin
+                    cnt_last_val  <= 0;
+                  end
+                  else begin
+                    cnt_last_val  <= cnt_last_val + 1;
+                  end
+                end
+
+              end
+            endcase
+          end
+      endcase
+    end
+  end
+  
+
+endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*always_ff @( posedge clk_i or posedge arst_i ) begin
     if( arst_i ) begin
       tdata_o       <= 0; tvalid_o      <= 0; tlast_o       <= 0; 
       cnt_l_x       <= 0; cnt_l_y       <= 0;
@@ -232,5 +434,4 @@ module roi_axis
       endcase
     end
   end
-
-endmodule
+  */

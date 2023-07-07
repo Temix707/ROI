@@ -25,7 +25,7 @@ module roi_top_tb
                                 APB_DATA_I_WIDTH  = 64,
                                 APB_ADDR_WIDTH    = 12,
 
-                                SUM_PIX     = ( WIDTH + 1 ) * ( HEIGHT + 1 )  // Example (0...800) *  (0...600)
+                                SUM_PIX           = ( WIDTH + 1 ) * ( HEIGHT + 1 )  // Example (0...800) *  (0...600)
 )();
 
   logic                         clk_i;
@@ -211,9 +211,9 @@ module roi_top_tb
     else begin
 
       if( tvalid_o ) begin
-        cnt_data_o_que.push_back(tdata_i);
+        cnt_data_o_que.push_back( tdata_i );
 
-        data_o_que.push_back(tdata_i);
+        data_o_que.push_back( tdata_i );
         down_data_expected <= data_o_que.pop_back();
       end
 
