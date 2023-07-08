@@ -50,9 +50,11 @@ module roi_axis
   logic                                 wr_full, rd_empty;
 
   // Registers for input data (remove the delay)
-  logic [BIT_DATA_O-1:0]                data_ff_1, data_ff_2;
+  logic [BIT_DATA_O-1:0]                data_ff_1, data_ff_2, data_ff_3;
 
-  logic                                 tvalid_ff_1, tvalid_ff_2;
+  // Verification data
+  logic [BIT_DATA_O-1:0]                data_check;
+
 
   always_comb begin
     // Full block and empty block counters
@@ -87,7 +89,6 @@ module roi_axis
    
   type_state state, next_st;
    
- 
 
 
   ////////////////////////////////////////
@@ -100,63 +101,51 @@ module roi_axis
   end
 
 
-  always_ff @(posedge clk_i or negedge arst_i) begin
-    if( arst_i ) begin
-      tvalid_ff_1 <= 0;
-      tvalid_ff_2 <= 0;
-    end
-    else begin
-      tvalid_ff_1 <= tvalid_i;
-      tvalid_ff_2 <= tvalid_ff_1;
-    end
-    
-
-    
-  end
-
-
-
   always_comb begin
     next_st = IDLE;
 
     case( state )
       IDLE: begin
         // Checking coordinates beyond the limit of a large area
-        if( !((x0 > WIDTH) || (y0 > HEIGHT) || (x1 > WIDTH) || (y1 > HEIGHT)) ) begin   
-          if( tvalid_ff_2 && !tlast_i )       next_st = AREA_PH;
-          else                              next_st = IDLE;
+        if( !(( x0 > WIDTH ) || ( y0 > HEIGHT ) || ( x1 > WIDTH ) || ( y1 > HEIGHT )) ) begin   
+          if( tvalid_i && !tlast_i )      next_st = AREA_PH;
+          else                            next_st = IDLE;
         end
         else begin
-                                            next_st = IDLE;
+                                          next_st = IDLE;
         end
       end
 
       AREA_PH: begin
-          if( !( tvalid_ff_2 && !tlast_i ) )  next_st = IDLE;
-          else                              next_st = AREA_PH;
+          if( !( tvalid_i && !tlast_i ) ) next_st = IDLE;
+          else                            next_st = AREA_PH;
       end
 
-      default:                              next_st = IDLE;
+      default:                            next_st = IDLE;
     endcase
   end
+
+
 
   /////////////////////////////////////////////
   // Logic of a combinational finite machine //
   /////////////////////////////////////////////
 
-  always_comb begin
-    
-    tdata_o   = 0; 
-    tvalid_o  = 0; 
-    tlast_o   = 0;
+  always_comb begin    
+    tdata_o     = 0; 
+    tvalid_o    = 0; 
+    tlast_o     = 0;
+
+    data_check  = 0;
 
     case ( state )
       AREA_PH:  begin
+        data_check = data_ff_3;
         case( x0 > x1 )
           X0_L: begin
             if( ( cnt_l_x > ( x0 - 1 ) ) && ( cnt_l_x < ( x1 + 1 ) ) && ( cnt_l_y > ( y0 - 1 ) ) && ( cnt_l_y < ( y1 + 1 ) )) begin
-              tvalid_o    = tvalid_ff_2;
-              tdata_o     = tdata_i;
+              tvalid_o    = tvalid_i;
+              tdata_o     = data_ff_3;
             end
             else begin
               tvalid_o    = 0;
@@ -170,7 +159,7 @@ module roi_axis
 
           X0_R: begin
             if( ( cnt_l_x <= ( x0 - 1 ) ) && ( cnt_l_x >= ( x1 ) ) && ( cnt_l_y > ( y0 - 1 ) ) && ( cnt_l_y < ( y1 + 1 ) )) begin
-              tvalid_o    = tvalid_ff_2;
+              tvalid_o    = tvalid_i;
               tdata_o     = tdata_i;
             end
             else begin
@@ -193,9 +182,10 @@ module roi_axis
 
 
   always_ff @( posedge clk_i or posedge arst_i ) begin
-    if( tvalid_ff_2 && !tlast_i ) begin
+    if( tvalid_i && !tlast_i ) begin
       data_ff_1   <= tdata_i;
       data_ff_2   <= data_ff_1;
+      data_ff_3   <= data_ff_2;
     end
   end
 
@@ -209,7 +199,7 @@ module roi_axis
       cnt_l_x       <= 0;   cnt_l_y       <= 1;
       cnt_s_x_pxl   <= 0;
       cnt_quan_pxl  <= 0;   cnt_last_val  <= 0;
-      data_ff_1     <= 0;   data_ff_2     <= 0;
+      data_ff_1     <= 0;   data_ff_2     <= 0;   data_ff_3 <= 0;
     end
     else begin
       case( state )
@@ -239,6 +229,7 @@ module roi_axis
 
           // If the counter is full in a large area
           if( cnt_quan_pxl == ( HEIGHT * WIDTH ) ) begin
+            cnt_quan_pxl  <= 0;
             cnt_l_x       <= 0;
             cnt_l_y       <= 0;
           end
@@ -255,17 +246,17 @@ module roi_axis
                   cnt_s_x_pxl <= cnt_s_x_pxl + 1;              
                 end
                 else begin
-                  cnt_s_x_pxl <= cnt_s_x_pxl;
+                  cnt_s_x_pxl     <= cnt_s_x_pxl;
                 end
               end
 
 
               X0_R: begin
                 if( ( cnt_l_x <= ( x0 - 1 ) ) && ( cnt_l_x >= ( x1 ) ) && ( cnt_l_y > ( y0 - 1 ) ) && ( cnt_l_y < ( y1 + 1 ) )) begin
-                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;
+                  cnt_s_x_pxl     <= cnt_s_x_pxl + 1;
                 end
                 else begin
-                  cnt_s_x_pxl <= cnt_s_x_pxl;
+                  cnt_s_x_pxl     <= cnt_s_x_pxl;
                 end
 
                 if( find_xy1_l) begin
@@ -286,152 +277,3 @@ module roi_axis
   
 
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*always_ff @( posedge clk_i or posedge arst_i ) begin
-    if( arst_i ) begin
-      tdata_o       <= 0; tvalid_o      <= 0; tlast_o       <= 0; 
-      cnt_l_x       <= 0; cnt_l_y       <= 0;
-      cnt_s_x_pxl   <= 0; //cnt_s_y       <= 0;
-      cnt_quan_pxl  <= 0; cnt_last_val  <= 0;
-    end
-    else begin
-      case( state )
-        IDLE:     begin
-          if( !((x0 > WIDTH) || (y0 > HEIGHT) || (x1 > WIDTH) || (y1 > HEIGHT)) ) begin   // Checking coordinates beyond the limit of a large area
-            if( tvalid_i && !tlast_i ) begin
-              next_st <= AREA_PH;
-            end
-            else begin
-              next_st <= IDLE;
-            end
-          end
-          else begin
-            next_st   <= IDLE;
-          end
-        end
-
-        AREA_PH:  begin
-          
-          if( !( tvalid_i && !tlast_i ) ) next_st   <= IDLE;
-          else                            next_st   <= AREA_PH;
-          
-          data_ff_1   <= tdata_i;
-          data_ff_2   <= data_ff_1;
-
-
-          /////////////////////////////////////
-          //////// Large area counters ////////
-          /////////////////////////////////////
-
-          // Counting the width and height counter for a large area
-          if( cnt_l_x !== WIDTH ) begin
-            cnt_l_x   <= cnt_l_x + 1;
-          end
-          else begin
-            cnt_l_x   <= 0;
-            cnt_l_y   <= cnt_l_y + 1;
-          end
-
-          // Zeroing the height counter when the maximum height of a large area is reached
-          if( cnt_l_y == (HEIGHT + 1) )   cnt_l_y      <= 0;
-
-          // Counting the count of the amount of data
-          if( cnt_l_y !== (HEIGHT + 1) ) begin
-             cnt_quan_pxl <= cnt_quan_pxl + 1;
-          end 
-          else begin
-            cnt_quan_pxl <= 0;
-          end
-
-          // If the counter is full in a large area
-          if( cnt_quan_pxl == ( ( HEIGHT + 1 ) * ( WIDTH + 1 ) ) ) begin
-            cnt_l_x   <= 0;
-            cnt_l_y   <= 0;
-          end
-          /////////////////////////////////////
-
-
-
-
-          /////////////////////////////////////
-          ////// Selections a small area //////
-          /////////////////////////////////////
-
-            case( x0 > x1 )
-              X0_L: begin
-                if( ( cnt_l_x > (x0-1) ) && ( cnt_l_x < (x1+1) ) && ( cnt_l_y > (y0-1) ) && ( cnt_l_y < (y1+1) )) begin
-                  tvalid_o    <= tvalid_i;
-                  tdata_o     <= data_ff_2;
-
-                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;              
-                end
-                else begin
-                  tvalid_o    <= 0;
-                  tdata_o     <= 0;
-              
-                  cnt_s_x_pxl <= cnt_s_x_pxl;
-                end
-
-                if( find_xy1_r ) begin
-                  tlast_o     <= 1;
-                end
-
-              end
-
-
-              X0_R: begin
-                if( ( cnt_l_x <= (x0-1) ) && ( cnt_l_x >= (x1) ) && ( cnt_l_y > (y0-1) ) && ( cnt_l_y < (y1+1) )) begin
-                  tvalid_o    <= tvalid_i;
-                  tdata_o     <= tdata_i;
-
-                  cnt_s_x_pxl <= cnt_s_x_pxl + 1;
-                end
-                else begin
-                  tvalid_o    <= 0;
-                  tdata_o     <= 0;
-              
-                  cnt_s_x_pxl <= cnt_s_x_pxl;
-                end
-
-                if( find_xy1_l) begin
-                  if( cnt_last_val == ( x0 - x1 ) ) begin
-                    tlast_o       <= 1;
-                    cnt_last_val  <= 0;
-                  end
-                  else begin
-                    cnt_last_val  <= cnt_last_val + 1;
-                  end
-                end
-
-              end
-            endcase
-            /////////////////////////////////////
-            
-          end
-
-
-        default: begin
-          next_st <= IDLE;
-        end
-
-      endcase
-    end
-  end
-  */

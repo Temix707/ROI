@@ -21,7 +21,7 @@ module roi_axis_tb
                           BIT_DATA_O  = 8,
                           BIT_COORD   = 32, 
 
-                          SUM_PIX     = ( ( WIDTH ) * ( HEIGHT ) - 1 )  // (HEIGHT * WIDTH) == 480_000 values => 0...479_999 (0-599,0-799)
+                          SUM_PIX     = ( ( WIDTH ) * ( HEIGHT ) )  // (HEIGHT * WIDTH) == 480_000 
 )();
 
   logic                   clk_i;
@@ -69,21 +69,13 @@ module roi_axis_tb
   // RESET
   initial begin
     arst_i = '1;
-    repeat (1)  @ ( posedge clk_i );
+    repeat (2)  @ ( posedge clk_i );
     arst_i = '0;
   end
 
 
-  trans pkt;
-
-  initial begin 
-    pkt = new();
-
-    repeat (1)  @ ( posedge clk_i );
-    tlast_i       = 0;
-    tvalid_i      = 1;
-
-    // Set coordinates to points                            
+  // Set coordinates to points 
+  initial begin                                   
     xy_0_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd200 };    // [26:16] x0, [9:0] y0  (200,200)
     xy_1_i[31:0]  = { 6'd0, 10'd600, 6'd0, 10'd400 };    // [26:16] x1, [9:0] y1  (600,400)
 
@@ -92,46 +84,118 @@ module roi_axis_tb
 
     x1            = xy_1_i[26:16];
     y1            = xy_1_i[9:0];
+  end
 
-    // The tlast_i signal is set when the latest data arrives
-    repeat ( ((HEIGHT) * (WIDTH))  ) @ ( posedge clk_i );         // ?
-    tlast_i       = 1;
+
+
+
+
+  trans pkt;
+
+  initial begin 
+    pkt = new();
+
+    repeat (2)  @ ( posedge clk_i );
+    tlast_i       = 0;
+    tvalid_i      = 0;
+
+    repeat (2)  @ ( posedge clk_i );
+    tlast_i       = 0;
+    tvalid_i      = 1;
 
   end
 
+
+
+
+
   // Small area size
   logic [BIT_COORD - 1:0] SUM_PIX_SMALL_AREA;
-  assign SUM_PIX_SMALL_AREA = (( x1 - x0 + 1) * ( y1 - y0 + 1)) - 1;  // 201 * 401 = 80601 values => 0...80600
+  assign SUM_PIX_SMALL_AREA = (( x1 - x0 + 1) * ( y1 - y0 + 1));  // 201 * 401 = 80601 values => 0...80600
+
+
 
 
   //// Randomization of data  ////
   always_ff @( posedge clk_i ) begin
-    if( tvalid_i ^ tlast_i ) begin
+    if( tvalid_i && !tlast_i ) begin
       pkt.randomize();
-      tdata_i <= pkt.random_val( pkt.pixel); 
+      tdata_i = pkt.random_val( pkt.pixel); 
       // pkt.print( tdata_i );
     end
     else begin
-      tdata_i <= 0;
+      tdata_i = 0;
     end
   end
-  ////////////////////////////////
 
 
 
-  logic [BIT_DATA_O - 1:0] data_i_que [$];       // Queue for checking data in a large area      
+  logic [BIT_DATA_O-1:0]    data_ff_1, data_ff_2, data_ff_3;
+  logic [BIT_DATA_O - 1:0]  data_show;
+
+  logic                     tlast_ff;
+  logic                     tvalid_ff;
+
+
+  logic [BIT_DATA_O - 1:0]  data_i_que     [$];       // Queue for checking data in a large area   
+  logic [BIT_DATA_O - 1:0]  cnt_data_i_que [$]; 
   
-  logic [1:0]         cnt_delay;            // Input data delay counter
+  logic [1:0]               cnt_delay;                // Input data delay counter
 
+
+  always_ff @( posedge clk_i or posedge arst_i ) begin
+    if( arst_i ) begin
+      cnt_data_i_que  = {};                         
+      cnt_delay       = 0;                                      
+    end
+    else begin
+      
+      if( tvalid_i ) begin
+        data_ff_1   <= tdata_i;
+        data_ff_2   <= data_ff_1;
+        data_ff_3   <= data_ff_2;
+        cnt_data_i_que.push_back( data_ff_3 );
+      end
+
+      // Avoid delays with the first data received (2 cycles)
+      if( !(cnt_delay == 1) ) begin
+        if( cnt_data_i_que.size() == 2 ) begin
+          cnt_data_i_que.delete();
+          cnt_delay = cnt_delay + 1;
+        end
+      end 
+
+      if( cnt_data_i_que.size() == SUM_PIX ) begin
+        $display  ( "ALL DATA WAS RECORDED OVER A LARGE AREA: \nIt should have come: %0d, \t Has come: %0d, \t Time: %0t \n"
+        , SUM_PIX, cnt_data_i_que.size(), $time );
+        
+        tvalid_ff = 0;
+        tlast_ff  = 1;
+        $stop();
+      end
+      else begin
+        $display  ( "Not all pixels were transferred to a large area. \nInp data: %0d, \tThe amount of data recorded: %0d, \t Time: %0t \n-----------------------"
+        , data_ff_2, cnt_data_i_que.size(), $time );
+      end
+
+    end
+  end
+
+  assign tvalid_i = tvalid_ff;
+  assign tlast_i  = tlast_ff;
+
+
+
+/*
   ///// Queue check block for a large area  /////
-  always_ff @( posedge clk_i or posedge arst_i) begin
+  always_ff @( posedge clk_i or posedge arst_i ) begin
     if( arst_i ) begin
       data_i_que  = {};                         
-      cnt_delay = 0;                                      
+      cnt_delay   = 0;                                      
     end
     else begin
       if( tvalid_i ) begin
-        data_i_que.push_back ( tdata_i );
+        data_i_que.push_back( tdata_i );
       end
 
       // Avoid delays with the first data received (2 cycles)
@@ -161,7 +225,7 @@ module roi_axis_tb
     end
   end
   ////////////////////////////////////////////////  
-
+*/
 
 
 
@@ -217,73 +281,3 @@ module roi_axis_tb
 
 
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-      if( down_data_expected == tdata_o ) begin
-        $display  ( "SUCCESS: The data is transmitted correctly: \nThe data is not transmitted correctly: %0d, \tOutput data from a small area: %0d, \tTime: %0t\n-----------------------"
-        , down_data_expected, tdata_o, $time );
-
-        if( cnt_data_o_que.size() == SUM_PIX_SMALL_AREA ) begin
-            $display  ( "SUCCESS: ALL DATA FROM A SMALL AREA WAS TRANSMITTED: \nIt should have come: %0d, Has come: %0d, \tTime: %0t \n-----------------------"
-            , SUM_PIX_SMALL_AREA, cnt_data_o_que.size() , $time );
-        end
-        else begin
-          $display  ( "ERROR: Not all data from a small area was transmitted: \nIt should have come: %0d, Has come: %0d, \tTime: %0t \n-----------------------"
-          , SUM_PIX_SMALL_AREA, cnt_data_o_que.size() , $time );
-        end
-      end
-      else begin
-        $display  ( "ERROR: Small area not found. \nThe data is not transmitted correctly: \nInput data for a small area: %0d, \tOutput data for a small area: %0d, \tTime: %0t\n-----------------------"
-        , down_data_expected, tdata_o, $time );
-      end
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // ASSERTIONS
-  /*sequence validReq;
-    ( tvalid_i ##1 tvalid_o );
-  endsequence
-
-  sequence lastReq;
-    (tvalid_o ##1 tlast_o );
-  endsequence
-
-  property pExampleValid;
-    @(posedge clk_i) ( validReq );
-  endproperty
-
-  property pExampleLast;
-    @(posedge clk_i) ( lastReq );
-  endproperty
-
-  assert property ( pExampleValid );
-  assert property ( pExampleLast  );*/
