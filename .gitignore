@@ -8,6 +8,7 @@ ROI.srcs/
 #scheme/
 src/xdc/
 src/src.rar
+src/rtl/FSM_roi_axis.txt
 
 
 ## log files
