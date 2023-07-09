@@ -103,6 +103,14 @@ module roi_axis_tb
     tlast_i       = 0;
     tvalid_i      = 1;
 
+    repeat (5)  @ ( posedge clk_i );
+    tlast_i       = 0;
+    tvalid_i      = 0;
+
+    repeat (3)  @ ( posedge clk_i );
+    tlast_i       = 0;
+    tvalid_i      = 1;
+
   end
 
 
@@ -154,7 +162,7 @@ module roi_axis_tb
         data_ff_1   <= tdata_i;
         data_ff_2   <= data_ff_1;
         data_ff_3   <= data_ff_2;
-        cnt_data_i_que.push_back( data_ff_3 );
+        cnt_data_i_que.push_back( data_ff_2 );
       end
 
       // Avoid delays with the first data received (2 cycles)
@@ -171,7 +179,9 @@ module roi_axis_tb
         
         tvalid_ff = 0;
         tlast_ff  = 1;
+
         $stop();
+        cnt_data_i_que.delete();
       end
       else begin
         $display  ( "Not all pixels were transferred to a large area. \nInp data: %0d, \tThe amount of data recorded: %0d, \t Time: %0t \n-----------------------"
