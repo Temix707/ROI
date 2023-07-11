@@ -43,16 +43,16 @@ module roi_apb
 
   // Output coordinates xy0
   logic [APB_DATA_W-1:0]  data_xy_0_o_ff;
-  //logic [APB_DATA_W-1:0]  data_xy_0_o_next;
-  //logic                   data_xy_0_o_en;     ?
+  logic [APB_DATA_W-1:0]  data_xy_0_o_next;
+  logic                   data_xy_0_o_en;     
 
   // Output coordinates xy1
   logic [APB_DATA_W-1:0]  data_xy_1_o_ff;
-  //logic [APB_DATA_W-1:0]  data_xy_1_o_next;
-  //logic                   data_xy_1_o_en;     ?
+  logic [APB_DATA_W-1:0]  data_xy_1_o_next;
+  logic                   data_xy_1_o_en;     
 
   // PRDATA
-  logic [APB_DATA_W-1:0]  apb_dout_ff;
+  logic [APB_DATA_W-1:0]  apb_dout;
   logic [APB_DATA_W-1:0]  apb_dout_next;
   logic                   apb_dout_en;
 
@@ -71,8 +71,8 @@ module roi_apb
     apb_write      =   apb_psel_i &  apb_pwrite_i;
     apb_read       =   apb_psel_i & ~apb_pwrite_i;
 
-    apb_sel_xy_0_o = ( apb_paddr_i == ADDR_XY_0  );
-    apb_sel_xy_1_o = ( apb_paddr_i == ADDR_XY_1  );
+    apb_sel_xy_0_o = ( apb_paddr_i == ADDR_XY_0 );
+    apb_sel_xy_1_o = ( apb_paddr_i == ADDR_XY_1 );
   end
 
 
@@ -84,15 +84,13 @@ module roi_apb
 
   // Data in
 
-  assign data_i_en = apb_write;
-
+  assign data_i_en   = apb_write;
   assign data_i_next = apb_pwdata_i;
 
   always_ff @( posedge clk_i or posedge arst_i ) begin
-    if    ( arst_i    ) data_i_ff <= '0;
-    else  ( data_i_en ) data_i_ff <= data_i_next;
-  end
-
+    if      ( arst_i    )  data_i_ff <= '0;
+    else if ( data_i_en )  data_i_ff <= data_i_next;
+  end   
 
 
 
@@ -102,27 +100,30 @@ module roi_apb
 
   //  PRDATA  //
 
-  assign apb_dout_en   = apb_read;
+  assign apb_dout_en   = apb_read & apb_pready_o;
 
-  assign apb_dout_next = apb_sel_xy_0_o ? APB_DATA_W'( data_i_ff )
-                       : apb_sel_xy_1_o ? APB_DATA_W'( data_i_ff )   
+  assign apb_dout_next = apb_sel_xy_0_o ? APB_DATA_W'( data_xy_0_o_ff )
+                       : apb_sel_xy_1_o ? APB_DATA_W'( data_xy_1_o_ff )   
                        :                  '0;
 
-
-  always_ff @( posedge clk_i or posedge arst_i ) begin
-    if      ( arst_i      )   apb_dout_ff <= '0;
-    else if ( apb_dout_en )   apb_dout_ff <= apb_dout_next;
+  always_comb begin
+    if   ( apb_dout_en )  apb_dout = apb_dout_next;
+    else                  apb_dout = 0;
   end
 
-  assign apb_prdata_o  = apb_dout_ff;
+  assign apb_prdata_o  = apb_dout;
+ 
 
 
 
-  //  XY0  //
+  // Writing data to registers XY0  //
+
+  assign data_xy_0_o_en   = apb_sel_xy_0_o & apb_write;
+  assign data_xy_0_o_next = data_i_ff;
 
   always_ff @( posedge clk_i or posedge arst_i ) begin
-    if      ( arst_i )    data_xy_0_o_ff <= '0;
-    else /*if ( ? ) */    data_xy_0_o_ff <= apb_dout_next;
+    if      ( arst_i         )  data_xy_0_o_ff <= '0;
+    else if ( data_xy_0_o_en )  data_xy_0_o_ff <= data_xy_0_o_next;
   end
 
   assign xy_0_o = data_xy_0_o_ff;
@@ -130,15 +131,17 @@ module roi_apb
 
 
 
-  //  XY1  //
+  // Writing data to registers XY1  //
+
+  assign data_xy_1_o_en   = apb_sel_xy_1_o & apb_write;
+  assign data_xy_1_o_next = data_i_ff;
 
   always_ff @( posedge clk_i or posedge arst_i ) begin
-    if      ( arst_i )    data_xy_1_o_ff <= '0;
-    else /*if ( ? ) */    data_xy_1_o_ff <= apb_dout_next;
+    if      ( arst_i         )  data_xy_1_o_ff <= '0;
+    else if ( data_xy_1_o_en )  data_xy_1_o_ff <= data_xy_1_o_next;
   end
 
-  assign xy_1_o = data_xy_0_o_ff;
-
+  assign xy_1_o = data_xy_1_o_ff;
 
 
 
@@ -148,88 +151,16 @@ module roi_apb
   //////   APB ready   //////
   ///////////////////////////
 
-  assign apb_ready_en   = ( apb_psel_i & apb_penable_i ) | apb_ready_ff;
-
+  assign apb_ready_en   = ( apb_psel_i & apb_penable_i ) |  apb_ready_ff;
   assign apb_ready_next = ( apb_psel_i & apb_penable_i ) & ~apb_ready_ff;
 
-
   always_ff @( posedge clk_i or posedge arst_i ) begin
-    if      ( arst_i       )    apb_ready_ff <= '0;
-    else if ( apb_ready_en )    apb_ready_ff <= apb_ready_next;
+    if      ( arst_i       )  apb_ready_ff <= '0;
+    else if ( apb_ready_en )  apb_ready_ff <= apb_ready_next;
   end
 
-  assign apb_pready_o  = apb_ready_ff;
+  assign apb_pready_o   = apb_ready_ff;
 
 
 
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-///////////////////////////////////////////////////
-/////////////////   OLD  //////////////////////////
-///////////////////////////////////////////////////
-
-/*
-  // Local declarations
-  localparam ADDR_ROI = 12'h0;                                    // Slave Device Address (ROI)
-
-  logic                         apb_write;
-  logic                         apb_sel_roi_val;
-
-  logic [APB_DATA_I_WIDTH-1:0]  xy_val_ff;  
-
-  // APB decoding
-  always_comb begin
-    apb_write       = apb_psel_i & apb_pwrite_i;
-
-    apb_sel_roi_val = ( apb_paddr_i == ADDR_ROI );                // Choosing a peripheral device (ROI)
-  end
-
-/////////
-
-
-  // APB data out
-  logic [APB_DATA_I_WIDTH-1:0] apb_dout_ff;
-  logic [APB_DATA_I_WIDTH-1:0] apb_dout_next;
-
-  // Input reg values xy
-  always_ff @( posedge clk_i or posedge arst_i ) begin
-    if ( arst_i ) xy_val_ff   <= '0;
-    else          xy_val_ff   <= apb_pwdata_i;
-  end
-
-
-
-  // Output reg values
-  assign apb_dout_next = apb_sel_roi_val ? ( xy_val_ff ) : ( '0 );
-
-  always_ff @( posedge clk_i or posedge arst_i ) begin
-    if ( arst_i ) apb_dout_ff <= '0;
-    else          apb_dout_ff <= apb_dout_next;
-  end
-
-
-  assign xy_0_o        = apb_dout_ff [31:0];
-  assign xy_1_o        = apb_dout_ff [63:32];
-
-endmodule
-
-*/

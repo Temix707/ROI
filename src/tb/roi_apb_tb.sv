@@ -39,12 +39,12 @@ module roi_apb_tb
     .apb_prdata_o   ( apb_prdata_o  ),
     .apb_pready_o   ( apb_pready_o  ),
 
-
     .xy_0_o         ( xy_0_o        ),
     .xy_1_o         ( xy_1_o        )
   );
 
 
+  logic [APB_DATA_W-1:0] prdata;
 
 
   ///////////
@@ -60,8 +60,8 @@ module roi_apb_tb
   );
     // Address phase
     apb_paddr_i   <= paddr;
-    apb_psel_i    <= 1'b1;
     apb_pwrite_i  <= 1'b1;
+    apb_psel_i    <= 1'b1;
     apb_pwdata_i  <= pwdata;
 
     // Data phase
@@ -74,6 +74,8 @@ module roi_apb_tb
 
     // Unset penable
     apb_penable_i <= 1'b0;
+    apb_psel_i    <= 1'b0;
+    apb_pwdata_i  <= 32'd0;
   endtask
 
 
@@ -81,8 +83,8 @@ module roi_apb_tb
   // Read transfer  //
 
   task automatic exec_apb_read_trans(
-      input  bit [31:0] paddr,
-      output bit [31:0] prdata
+      input  logic [APB_ADDR_W-1:0] paddr,
+      output logic [APB_DATA_W-1:0] prdata
   );
     // Address phase
     apb_paddr_i  <= paddr;
@@ -99,17 +101,19 @@ module roi_apb_tb
 
     // Save data
     prdata = apb_prdata_o;
+    
     // Unset penable
     apb_penable_i <= 1'b0;
+    apb_psel_i    <= 1'b0;
   endtask
 
 
 
 
 
-
-
-
+  //////////////
+  // Stimulus //
+  //////////////
 
 
    // CLK
@@ -123,47 +127,45 @@ module roi_apb_tb
    // RESET 
     arst_i = '1;
     repeat (2)  @ ( posedge clk_i );
-    arst_i = '0;
+    arst_i = '0;    
+    
+    
+    //////////////////////
+    //  Write transfer  //
+    //////////////////////
 
+    // 1st coordinates xy0
+    exec_apb_write_trans( 12'h0, { 6'd0, 10'd400, 6'd0, 10'd300 } );
+
+    // 1st coordinates xy1
+    repeat (3)  @ ( posedge clk_i );
+    exec_apb_write_trans( 12'h4, { 6'd0, 10'd600, 6'd0, 10'd400 } );
+
+
+    // 2nd coordinates xy0
+    repeat (10)  @ ( posedge clk_i );
     exec_apb_write_trans( 12'h0, { 6'd0, 10'd200, 6'd0, 10'd200 } );
 
+    // 2nd coordinates xy1
+    repeat (3)  @ ( posedge clk_i );
+    exec_apb_write_trans( 12'h4, { 6'd0, 10'd600, 6'd0, 10'd400 } );
 
 
-    repeat (20)  @ ( posedge clk_i );
-    arst_i = '1;
-    repeat (2)  @ ( posedge clk_i );
-    arst_i = '0;
 
-    exec_apb_write_trans( 12'h0, { 6'd0, 10'd400, 6'd0, 10'd200 } );
+    //////////////////////
+    //  Write transfer  //
+    //////////////////////
+    
+    repeat (3)  @ ( posedge clk_i );
+    exec_apb_read_trans( 12'h0, prdata );
+
+    repeat (3)  @ ( posedge clk_i );
+    exec_apb_read_trans( 12'h4, prdata );
+
+    repeat (3)  @ ( posedge clk_i );
+    exec_apb_read_trans( 12'h0, prdata );
   end
 
 
 
-
-
-
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-  initial begin
-    /*apb_psel_i          = 1;
-    apb_pwrite_i        = 1;
-
-    apb_paddr_i         = 12'h0;
-
-    apb_pwdata_i[31:0]  <= { 6'd0, 10'd200, 6'd0, 10'd200 };    
-    //apb_pwdata_i[63:32] = { 6'd0, 10'd600, 6'd0, 10'd400 };
-  end*/

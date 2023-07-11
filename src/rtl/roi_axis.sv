@@ -92,7 +92,9 @@ module roi_axis
 
     data_check  = 0;
 
-    if( !(( x0 > WIDTH ) || ( y0 > HEIGHT ) || ( x1 > WIDTH ) || ( y1 > HEIGHT )) ) begin 
+    if( !(( x0 > WIDTH ) || ( y0 > HEIGHT ) || ( x1 > WIDTH ) || ( y1 > HEIGHT ) ||
+          ( x0 == 0 )    || ( y0 == 0 )     || ( x1 == 0 )    || ( y1 == 0 )        ) ) begin
+
       if( (tvalid_i && !tlast_i) || (tvalid_i && tlast_i) ) begin
         data_check = tdata_i;
         case( x0 > x1 )
@@ -148,7 +150,9 @@ module roi_axis
       cnt_quan_pxl  <= 0;   cnt_last_val  <= 0;
     end
     else begin
-      if( !(( x0 > WIDTH ) || ( y0 > HEIGHT ) || ( x1 > WIDTH ) || ( y1 > HEIGHT )) ) begin 
+    if( !(( x0 > WIDTH ) || ( y0 > HEIGHT ) || ( x1 > WIDTH ) || ( y1 > HEIGHT ) ||
+          ( x0 == 0 )    || ( y0 == 0 )     || ( x1 == 0 )    || ( y1 == 0 )        ) ) begin
+            
         if( (tvalid_i && !tlast_i) || (tvalid_i && tlast_i) ) begin
 
           /////////////////////////////////////
