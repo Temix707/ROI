@@ -45,6 +45,8 @@ module roi_axis
   logic                                   find_xy0_l, find_xy1_r;
   logic                                   find_xy0_r, find_xy1_l;
 
+  logic                                   cnt_last_tlast;                   
+
   logic                                   wr_full, rd_empty;                // Counters of fullness and emptiness
 
   logic [BIT_DATA_O-1:0]                  data_check;                       // Verification data
@@ -76,8 +78,6 @@ module roi_axis
       find_xy1_l  = ( cnt_l_x >= x1 ) &&  ( cnt_l_y >= y1 );                // Из-за того, что x0 находился правее, дописал знак (>=) для того, чтобы счетчик  
     end                                                                     // досчитывал до последних данных в маленькой области и отправлял сигнал tlast_o.
   end
-
-
 
 
 
@@ -126,7 +126,7 @@ module roi_axis
             end
 
             if( find_xy1_l) begin
-              if( cnt_last_val == ( x0 - x1 ) ) begin
+              if( (cnt_last_val == ( x0 - x1 )) && cnt_last_tlast !== 1 ) begin
                 tlast_o   = 1;
               end
             end
@@ -148,11 +148,12 @@ module roi_axis
       cnt_l_x       <= 0;   cnt_l_y       <= 1;
       cnt_s_x_pxl   <= 1;
       cnt_quan_pxl  <= 0;   cnt_last_val  <= 0;
+      cnt_last_tlast <= 0;
     end
     else begin
     if( !(( x0 > WIDTH ) || ( y0 > HEIGHT ) || ( x1 > WIDTH ) || ( y1 > HEIGHT ) ||
           ( x0 == 0 )    || ( y0 == 0 )     || ( x1 == 0 )    || ( y1 == 0 )        ) ) begin
-            
+
         if( (tvalid_i && !tlast_i) || (tvalid_i && tlast_i) ) begin
 
           /////////////////////////////////////
@@ -215,8 +216,9 @@ module roi_axis
               end
 
               if( find_xy1_l ) begin
-                if( cnt_last_val == ( x0 - x1 ) ) begin
+                if( ( cnt_last_val == ( x0 - x1 ) ) && cnt_last_tlast !== 1 ) begin
                   cnt_last_val  <= 0;
+                  cnt_last_tlast = 1;
                 end
                 else begin
                   cnt_last_val  <= cnt_last_val + 1;

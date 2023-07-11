@@ -16,6 +16,129 @@ endclass
 
 module roi_top_tb
 #(
+  parameter               WIDTH       = 800,
+                          HEIGHT      = 600,   
+
+                          AXIS_DATA_W = 8,
+                          APB_DATA_W  = 32, 
+                          APB_ADDR_W  = 12,
+
+                          SUM_PIX     = ( ( WIDTH ) * ( HEIGHT ) )  // (HEIGHT * WIDTH) == 480_000 
+)();
+
+  logic                   clk_i;
+  logic                   arst_i;
+
+  // AXIS
+  logic [AXIS_DATA_W-1:0] tdata_i;                  
+  logic                   tvalid_i;                 
+  logic                   tlast_i;                  
+
+  logic [AXIS_DATA_W-1:0] tdata_o;               
+  logic                   tvalid_o;                
+  logic                   tlast_o;  
+
+  // APB
+  logic [APB_DATA_W-1:0]  apb_pwdata_i;
+  logic [APB_ADDR_W-1:0]  apb_paddr_i;
+
+  logic                   apb_pwrite_i;
+  logic                   apb_psel_i;
+  logic                   apb_penable_i;     
+
+  logic                   apb_pready_o;                   
+  logic [APB_DATA_W-1:0]  apb_prdata_o;
+
+
+  roi_top
+  DUT_ROI ( 
+    .clk_i          ( clk_i         ),
+    .arst_i         ( arst_i        ),
+
+    // AXIS
+    .tdata_i        ( tdata_i       ),
+    .tvalid_i       ( tvalid_i      ),
+    .tlast_i        ( tlast_i       ),
+
+    .tdata_o        ( tdata_o       ),
+    .tvalid_o       ( tvalid_o      ),
+    .tlast_o        ( tlast_o       ),
+
+    // APB
+    .apb_pwdata_i   ( apb_pwdata_i  ),
+    .apb_paddr_i    ( apb_paddr_i   ),
+
+    .apb_pwrite_i   ( apb_pwrite_i  ),
+    .apb_psel_i     ( apb_psel_i    ),
+    .apb_penable_i  ( apb_penable_i ),     
+
+    .apb_pready_o   ( apb_pready_o  ),                   
+    .apb_prdata_o   ( apb_prdata_o  )
+  );
+
+
+
+
+
+  //////////////
+  // Stimulus //
+  //////////////  
+
+
+  // CLK
+  initial begin
+    clk_i  = '0;
+    forever #10 clk_i  = ~clk_i;
+  end
+
+  // RESET
+  initial begin
+    arst_i = '1;
+    repeat (1)  @ ( posedge clk_i );
+    arst_i = '0;
+  end
+
+
+
+endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+`timescale 1ns / 1ps
+
+class trans; 
+  rand bit [7:0] pixel;
+
+  function automatic logic [7:0] random_val( logic [7:0] pixel); 
+    this.pixel = pixel;  
+    return this.pixel;
+  endfunction
+
+  function automatic logic [7:0] print( logic [7:0] tdata_i );
+    $display("Incoming Pixel = %0d", tdata_i);
+  endfunction
+endclass
+
+
+module roi_top_tb
+#(
   parameter                     WIDTH             = 800,
                                 HEIGHT            = 600,   
 
@@ -240,3 +363,6 @@ module roi_top_tb
   ////////////////////////////////////////////////
 
 endmodule
+
+
+*/

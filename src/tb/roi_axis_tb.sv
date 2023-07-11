@@ -74,9 +74,15 @@ module roi_axis_tb
   logic [BIT_COORD - 1:0] SUM_PIX_SMALL_AREA;                       // example: 201 * 401 = 80601 
 
   always_comb begin
-    if( x0 < x1 ) SUM_PIX_SMALL_AREA = (( ( x1 - x0 ) + 1 ) * ( ( y1 - y0 ) + 1 ));  
-    else          SUM_PIX_SMALL_AREA = (( ( x0 - x1 ) + 1 ) * ( ( y1 - y0 ) + 1 ));
+    if( ( x0 < x1 ) || ( x0 == x1 ) )  SUM_PIX_SMALL_AREA = (( ( x1 - x0 ) + 1 ) * ( ( y1 - y0 ) + 1 ));  
+    else                               SUM_PIX_SMALL_AREA = (( ( x0 - x1 ) + 1 ) * ( ( y1 - y0 ) + 1 ));
   end
+
+
+
+  //////////////
+  // Stimulus //
+  //////////////
 
 
   // CLK
@@ -128,18 +134,20 @@ module roi_axis_tb
     repeat ( (WIDTH * HEIGHT) + 10000 ) @ ( posedge clk_i );
     tlast_i       = 0;
     tvalid_i      = 1;
-    xy_0_i[31:0]  = { 6'd0, 10'd700, 6'd0, 10'd100 };               // [26:16] x0, [9:0] y0  (700, 100)
-    xy_1_i[31:0]  = { 6'd0, 10'd400, 6'd0, 10'd500 };               // [26:16] x1, [9:0] y1  (400, 500)
-
+    xy_0_i[31:0]  = { 6'd0, 10'd1, 6'd0, 10'd1     };               // [26:16] x0, [9:0] y0  (1,1)
+    xy_1_i[31:0]  = { 6'd0, 10'd800, 6'd0, 10'd600 };               // [26:16] x1, [9:0] y1  (800, 600)
+    
+    
     // Fourth image
     repeat ( (WIDTH * HEIGHT) + 10000 ) @ ( posedge clk_i );
     tlast_i       = 0;
     tvalid_i      = 1;
-    xy_0_i[31:0]  = { 6'd0, 10'd1, 6'd0, 10'd1     };               // [26:16] x0, [9:0] y0  (1,1)
-    xy_1_i[31:0]  = { 6'd0, 10'd800, 6'd0, 10'd600 };               // [26:16] x1, [9:0] y1  (800, 600)
+    xy_0_i[31:0]  = { 6'd0, 10'd300, 6'd0, 10'd200 };               // [26:16] x0, [9:0] y0  (300, 200)
+    xy_1_i[31:0]  = { 6'd0, 10'd100, 6'd0, 10'd400 };               // [26:16] x1, [9:0] y1  (100, 400)
+
 
     // Fifth image
-    repeat ( (WIDTH * HEIGHT) + 10000 ) @ ( posedge clk_i );
+    repeat ( (WIDTH * HEIGHT) + 100000 ) @ ( posedge clk_i );
     tlast_i       = 0;
     tvalid_i      = 0;
     xy_0_i[31:0]  = { 6'd0, 10'd200, 6'd0, 10'd300 };               // [26:16] x0, [9:0] y0  (200,300)
@@ -206,7 +214,7 @@ module roi_axis_tb
       if( cnt_data_i_que.size() == SUM_PIX + 1 ) begin
         tvalid_ff     = 0;
         cnt_data_i_que.delete();
-        //$stop();
+        $stop();
       end
       /*else begin
         $display  ( "Not all pixels were transferred to a large area. \nInp data: %0d, \tThe amount of data recorded: %0d, \t Time: %0t \n-----------------------"
@@ -256,7 +264,7 @@ module roi_axis_tb
         
             cnt_s_img = cnt_s_img + 1;
             cnt_data_o_que.delete();
-            //$stop();
+            $stop();
         end
       end
     end
