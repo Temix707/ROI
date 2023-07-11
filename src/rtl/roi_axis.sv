@@ -69,14 +69,22 @@ module roi_axis
 
   // Finding points
   always_comb begin
-    if ( x0 < x1 ) begin                                                    // if the point xy0 is to the left of the point xy1
-      find_xy0_l  = ( cnt_l_x == x0 ) &&  ( cnt_l_y == y0 );
-      find_xy1_r  = ( cnt_l_x == x1 ) &&  ( cnt_l_y == y1 );
-    end 
-    else begin                                                              // if point xy1 is to the left of point xy0
-      find_xy0_r  = ( cnt_l_x == x0 ) &&  ( cnt_l_y == y0 );
-      find_xy1_l  = ( cnt_l_x >= x1 ) &&  ( cnt_l_y >= y1 );                // Из-за того, что x0 находился правее, дописал знак (>=) для того, чтобы счетчик  
-    end                                                                     // досчитывал до последних данных в маленькой области и отправлял сигнал tlast_o.
+    if( !( x0 == 0 && x1 == 0 ) ) begin
+      if ( x0 < x1 ) begin                                                    // if the point xy0 is to the left of the point xy1
+        find_xy0_l  = ( cnt_l_x == x0 ) &&  ( cnt_l_y == y0 );
+        find_xy1_r  = ( cnt_l_x == x1 ) &&  ( cnt_l_y == y1 );
+      end 
+      else begin                                                              // if point xy1 is to the left of point xy0
+        find_xy0_r  = ( cnt_l_x == x0 ) &&  ( cnt_l_y == y0 );
+        find_xy1_l  = ( cnt_l_x >= x1 ) &&  ( cnt_l_y >= y1 );                // Из-за того, что x0 находился правее, дописал знак (>=) для того, чтобы счетчик  
+      end                                                                     // досчитывал до последних данных в маленькой области и отправлял сигнал tlast_o.
+    end
+    else begin
+      find_xy0_l  = 0;
+      find_xy1_r  = 0;                                                             // if point xy1 is to the left of point xy0
+      find_xy0_r  = 0;
+      find_xy1_l  = 0;
+    end
   end
 
 
@@ -194,14 +202,14 @@ module roi_axis
             X0_L: begin
               if( ( cnt_l_x > ( x0 - 1 ) ) && ( cnt_l_x < ( x1 + 1 ) ) && ( cnt_l_y > ( y0 - 1 ) ) && ( cnt_l_y < ( y1 + 1 ) )) begin
                 if( !( cnt_s_x_pxl == SUM_PIX_SMALL_AREA ) ) begin
-                  cnt_s_x_pxl   <= cnt_s_x_pxl + 1;     
+                  cnt_s_x_pxl     <= cnt_s_x_pxl + 1;     
                 end       
                 else begin
-                  cnt_s_x_pxl   <= 1;
+                  cnt_s_x_pxl     <= 1;
                 end
               end
               else begin
-                cnt_s_x_pxl     <= cnt_s_x_pxl;
+                cnt_s_x_pxl       <= cnt_s_x_pxl;
               end
             end
 
@@ -217,11 +225,11 @@ module roi_axis
 
               if( find_xy1_l ) begin
                 if( ( cnt_last_val == ( x0 - x1 ) ) && cnt_last_tlast !== 1 ) begin
-                  cnt_last_val  <= 0;
-                  cnt_last_tlast = 1;
+                  cnt_last_val    <= 0;
+                  cnt_last_tlast  = 1;
                 end
                 else begin
-                  cnt_last_val  <= cnt_last_val + 1;
+                  cnt_last_val    <= cnt_last_val + 1;
                 end
               end
             end
@@ -234,7 +242,6 @@ module roi_axis
         cnt_s_x_pxl   <= 1;
         cnt_quan_pxl  <= 0;   cnt_last_val  <= 0;
       end
-
     end
   end
   

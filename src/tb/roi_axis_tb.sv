@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-class trans; 
+class transit;
   rand bit [7:0]                            pixel;
 
   function automatic logic [7:0] random_val( logic [7:0] pixel); 
@@ -74,8 +74,8 @@ module roi_axis_tb
   logic [BIT_COORD - 1:0] SUM_PIX_SMALL_AREA;                       // example: 201 * 401 = 80601 
 
   always_comb begin
-    if( ( x0 < x1 ) || ( x0 == x1 ) )  SUM_PIX_SMALL_AREA = (( ( x1 - x0 ) + 1 ) * ( ( y1 - y0 ) + 1 ));  
-    else                               SUM_PIX_SMALL_AREA = (( ( x0 - x1 ) + 1 ) * ( ( y1 - y0 ) + 1 ));
+    if( x0 < x1 )  SUM_PIX_SMALL_AREA = (( ( x1 - x0 ) + 1 ) * ( ( y1 - y0 ) + 1 ));  
+    else           SUM_PIX_SMALL_AREA = (( ( x0 - x1 ) + 1 ) * ( ( y1 - y0 ) + 1 ));
   end
 
 
@@ -92,7 +92,7 @@ module roi_axis_tb
   end
 
   
-  trans pkt;
+  transit pkt;
 
   initial begin
     pkt = new();

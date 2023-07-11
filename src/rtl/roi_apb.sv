@@ -22,8 +22,8 @@ module roi_apb
 );
 
 
-  localparam ADDR_XY_0    = 12'h0;
-  localparam ADDR_XY_1    = 12'h4;
+  localparam ADDR_XY_0 = 12'h0;
+  localparam ADDR_XY_1 = 12'h4;
 
   // Wires for writing and reading
   logic                   apb_write;
